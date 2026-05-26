@@ -101,31 +101,24 @@ It demonstrates:
 
 More features will be added as I continue developing the full application.
 
-Latest Updates (May 2026)
-Category System & Analytics
-Added full category support for incomes and expenses
+## 📌 Latest Updates (May 2026)
 
-Implemented category CRUD (create, read, delete)
+### **Category System & Analytics**
+- Added full category support for incomes and expenses  
+- Implemented category CRUD (create, read, delete)  
+- Added `category_id` linking across models, schemas, and CRUD  
+- Introduced category mapping helper for clean lookups  
 
-Added category_id linking across models, schemas, and CRUD
+### **Enhanced Monthly Summary**
+- Added category‑based income and expense breakdowns  
+- Added percentage analytics per category  
+- Improved summary structure for frontend dashboards  
+- Added graceful handling for months with no data  
 
-Introduced category mapping helper for clean lookups
-
-Enhanced Monthly Summary
-Added category‑based income and expense breakdowns
-
-Added percentage analytics per category
-
-Improved summary structure for frontend dashboards
-
-Added graceful handling for months with no data
-
-Codebase Improvements
-Refactored backend with clear section headers
-
-Improved readability and consistency across files
-
-General cleanup and structural improvements
+### **Codebase Improvements**
+- Refactored backend with clear section headers  
+- Improved readability and consistency across files  
+- General cleanup and structural improvements  
 
 ---
 

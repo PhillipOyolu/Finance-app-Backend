@@ -1,40 +1,45 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
-from app import models, schemas
+
+from app.models import User, Expense, Income, Category
+from app.core.security import hash_password
+from app.models import Budget
 
 # Expense CRUD
 
-def create_expense(db: Session, expense: schemas.ExpenseCreate):
-    db_expense = models.Expense(
-        name=expense.name,
+def create_expense(db: Session, expense, user_id: int):
+    db_expense = Expense(
         amount=expense.amount,
-        category=expense.category,
-        category_id=expense.category_id
+        description=expense.description,
+        category_id=expense.category_id,
+        user_id=user_id
     )
     db.add(db_expense)
     db.commit()
     db.refresh(db_expense)
     return db_expense
 
-def get_expenses(db: Session):
-    return db.query(models.Expense).all()
 
-def update_expense(db: Session, expense_id: int, updated_data: schemas.ExpenseCreate):
-    expense = db.query(models.Expense).filter(models.Expense.id == expense_id).first()
+def get_expenses(db: Session, user_id: int):
+    return db.query(Expense).filter(Expense.user_id == user_id).all()
+
+
+def update_expense(db: Session, expense_id: int, updated_data):
+    expense = db.query(Expense).filter(Expense.id == expense_id).first()
     if not expense:
         return None
 
-    expense.name = updated_data.name
     expense.amount = updated_data.amount
-    expense.category = updated_data.category
+    expense.description = updated_data.description
     expense.category_id = updated_data.category_id
 
     db.commit()
     db.refresh(expense)
     return expense
 
+
 def delete_expense(db: Session, expense_id: int):
-    expense = db.query(models.Expense).filter(models.Expense.id == expense_id).first()
+    expense = db.query(Expense).filter(Expense.id == expense_id).first()
     if not expense:
         return None
 
@@ -42,39 +47,50 @@ def delete_expense(db: Session, expense_id: int):
     db.commit()
     return True
 
+
+def get_expenses_by_month(db: Session, year: int, month: int, user_id: int):
+    return db.query(Expense).filter(
+        Expense.user_id == user_id,
+        extract('year', Expense.created_at) == year,
+        extract('month', Expense.created_at) == month
+    ).all()
+
+
 # Income CRUD
 
-def create_income(db: Session, income: schemas.IncomeCreate):
-    db_income = models.Income(
-        name=income.name,
+def create_income(db: Session, income, user_id: int):
+    db_income = Income(
         amount=income.amount,
-        category=income.category,
-        category_id=income.category_id
+        description=income.description,
+        category_id=income.category_id,
+        user_id=user_id
     )
     db.add(db_income)
     db.commit()
     db.refresh(db_income)
     return db_income
 
-def get_incomes(db: Session):
-    return db.query(models.Income).all()
 
-def update_income(db: Session, income_id: int, updated_data: schemas.IncomeCreate):
-    income = db.query(models.Income).filter(models.Income.id == income_id).first()
+def get_incomes(db: Session, user_id: int):
+    return db.query(Income).filter(Income.user_id == user_id).all()
+
+
+def update_income(db: Session, income_id: int, updated_data):
+    income = db.query(Income).filter(Income.id == income_id).first()
     if not income:
         return None
 
-    income.name = updated_data.name
     income.amount = updated_data.amount
-    income.category = updated_data.category
+    income.description = updated_data.description
     income.category_id = updated_data.category_id
 
     db.commit()
     db.refresh(income)
     return income
 
+
 def delete_income(db: Session, income_id: int):
-    income = db.query(models.Income).filter(models.Income.id == income_id).first()
+    income = db.query(Income).filter(Income.id == income_id).first()
     if not income:
         return None
 
@@ -82,24 +98,18 @@ def delete_income(db: Session, income_id: int):
     db.commit()
     return True
 
-# Monthly Summary Helpers
 
-def get_incomes_by_month(db: Session, year: int, month: int):
-    return db.query(models.Income).filter(
-        extract('year', models.Income.created_at) == year,
-        extract('month', models.Income.created_at) == month
-    ).all()
-
-def get_expenses_by_month(db: Session, year: int, month: int):
-    return db.query(models.Expense).filter(
-        extract('year', models.Expense.created_at) == year,
-        extract('month', models.Expense.created_at) == month
+def get_incomes_by_month(db: Session, year: int, month: int, user_id: int):
+    return db.query(Income).filter(
+        Income.user_id == user_id,
+        extract('year', Income.created_at) == year,
+        extract('month', Income.created_at) == month
     ).all()
 
 # Category CRUD
 
-def create_category(db: Session, category: schemas.CategoryCreate):
-    db_category = models.Category(
+def create_category(db: Session, category):
+    db_category = Category(
         name=category.name,
         type=category.type
     )
@@ -108,17 +118,56 @@ def create_category(db: Session, category: schemas.CategoryCreate):
     db.refresh(db_category)
     return db_category
 
+
 def get_categories(db: Session):
-    return db.query(models.Category).all()
+    return db.query(Category).all()
+
 
 def get_category_map(db: Session):
-    categories = db.query(models.Category).all()
+    categories = db.query(Category).all()
     return {c.id: c.name for c in categories}
 
+
 def delete_category(db: Session, category_id: int):
-    category = db.query(models.Category).filter(models.Category.id == category_id).first()
+    category = db.query(Category).filter(Category.id == category_id).first()
     if category:
         db.delete(category)
         db.commit()
         return True
     return False
+
+# Budget CRUD
+
+def create_budget(db: Session, budget, user_id: int):
+    db_budget = Budget(
+        amount=budget.amount,
+        month=budget.month,
+        year=budget.year,
+        category_id=budget.category_id,
+        user_id=user_id
+    )
+    db.add(db_budget)
+    db.commit()
+    db.refresh(db_budget)
+    return db_budget
+
+def get_budgets(db: Session, user_id: int, month: int, year: int):
+    return db.query(Budget).filter(
+        Budget.user_id == user_id,
+        Budget.month == month,
+        Budget.year == year
+    ).all()
+
+# User CRUD
+
+def create_user(db: Session, user):
+    hashed = hash_password(user.password)
+    db_user = User(username=user.username, email=user.email, hashed_password=hashed)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def get_user_by_username(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()

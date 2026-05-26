@@ -1,13 +1,13 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 # Expense Schemas
 
 class ExpenseBase(BaseModel):
-    name: str
     amount: float
-    category: str
-    category_id: int | None = None
+    description: Optional[str] = None
+    category_id: Optional[int] = None
 
 class ExpenseCreate(ExpenseBase):
     pass
@@ -22,10 +22,9 @@ class Expense(ExpenseBase):
 # Income Schemas
 
 class IncomeBase(BaseModel):
-    name: str
     amount: float
-    category: str
-    category_id: int | None = None
+    description: Optional[str] = None
+    category_id: Optional[int] = None
 
 class IncomeCreate(IncomeBase):
     pass
@@ -52,3 +51,21 @@ class Category(CategoryBase):
 
     class Config:
         orm_mode = True
+
+# Budget Schemas
+
+class BudgetBase(BaseModel):
+    amount: float
+    month: int
+    year: int
+    category_id: Optional[int] = None
+
+class BudgetCreate(BudgetBase):
+    pass
+
+class Budget(BudgetBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
