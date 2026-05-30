@@ -88,3 +88,11 @@ def get_monthly_summary(
         "expense_entries": expenses,
         "budgets": budget_summary
     }
+
+# Yearly Summary
+
+@router.get("/yearly")
+def yearly_summary(year: int,
+                   db: Session = Depends(get_db),
+                   user=Depends(get_current_user)):
+    return crud.get_yearly_summary(db, user.id, year)

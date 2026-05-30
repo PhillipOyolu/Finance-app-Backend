@@ -1,8 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, ForeignKey
+from datetime import datetime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
-from datetime import datetime
 
 # Expense Model
 
@@ -77,3 +77,43 @@ class User(Base):
 
     expenses = relationship("Expense", back_populates="user")
     incomes = relationship("Income", back_populates="user")
+
+# Recuring Transactions Model
+
+class RecurringTransaction(Base):
+    __tablename__ = "recurring_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    amount = Column(Float, nullable=False)
+    description = Column(String, nullable=True)
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+
+    type = Column(String, nullable=False)  # "income" or "expense"
+    frequency = Column(String, nullable=False)  # "weekly", "monthly", "yearly"
+
+    next_run_date = Column(Date, nullable=False)
+    active = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    category = relationship("Category")
+
+# Savings Goals Model
+
+class SavingsGoal(Base):
+    __tablename__ = "savings_goals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    name = Column(String, nullable=False)
+    target_amount = Column(Float, nullable=False)
+    current_amount = Column(Float, default=0.0)
+    deadline = Column(Date, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
