@@ -1,17 +1,15 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from app.core.config import settings
 
-# Database Configuration
 
-DATABASE_URL = "sqlite:///./finance.db"
-
+# Database Configuration using settings
 engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}  # Required for SQLite + FastAPI
+    settings.DATABASE_URL,
+    connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
 )
 
 # Session Factory
-
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
@@ -19,11 +17,9 @@ SessionLocal = sessionmaker(
 )
 
 # Base Model Class
-
 Base = declarative_base()
 
 # Dependency: Database Session
-
 def get_db():
     db = SessionLocal()
     try:

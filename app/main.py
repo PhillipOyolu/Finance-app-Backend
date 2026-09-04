@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import Base, engine
 
 from app.routes import expenses
@@ -16,6 +17,13 @@ Base.metadata.create_all(bind=engine)
 
 # FastAPI App Instance
 app = FastAPI(title="Finance API", version="1.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # for development only
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Routers
 app.include_router(expenses.router)
