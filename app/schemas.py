@@ -1,9 +1,9 @@
-from pydantic import BaseModel
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Optional
+from pydantic import BaseModel, ConfigDict
+
 
 # Expense Schemas
-
 class ExpenseBase(BaseModel):
     amount: float
     description: Optional[str] = None
@@ -15,12 +15,10 @@ class ExpenseCreate(ExpenseBase):
 class Expense(ExpenseBase):
     id: int
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
 
 # Income Schemas
-
 class IncomeBase(BaseModel):
     amount: float
     description: Optional[str] = None
@@ -32,12 +30,10 @@ class IncomeCreate(IncomeBase):
 class Income(IncomeBase):
     id: int
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
 
 # Category Schemas
-
 class CategoryBase(BaseModel):
     name: str
     type: str  # "income" or "expense"
@@ -48,12 +44,10 @@ class CategoryCreate(CategoryBase):
 class Category(CategoryBase):
     id: int
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
 
 # Budget Schemas
-
 class BudgetBase(BaseModel):
     amount: float
     month: int
@@ -65,12 +59,10 @@ class BudgetCreate(BudgetBase):
 
 class Budget(BudgetBase):
     id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
 
 # Recurring Transaction Schemas
-
 class RecurringTransactionBase(BaseModel):
     amount: float
     description: Optional[str] = None
@@ -86,22 +78,18 @@ class RecurringTransactionCreate(RecurringTransactionBase):
 class RecurringTransaction(RecurringTransactionBase):
     id: int
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
 
 # Saving Goal Schemas
-
 class SavingsGoalBase(BaseModel):
     name: str
     target_amount: float
     current_amount: float = 0.0
     deadline: Optional[date] = None
 
-
 class SavingsGoalCreate(SavingsGoalBase):
     pass
-
 
 class SavingsGoalUpdate(BaseModel):
     name: Optional[str] = None
@@ -109,10 +97,20 @@ class SavingsGoalUpdate(BaseModel):
     current_amount: Optional[float] = None
     deadline: Optional[date] = None
 
-
 class SavingsGoal(SavingsGoalBase):
     id: int
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+
+# User Schemas
+class UserBase(BaseModel):
+    username: str
+    email: str
+
+class UserCreate(UserBase):
+    password: str
+
+class User(UserBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)

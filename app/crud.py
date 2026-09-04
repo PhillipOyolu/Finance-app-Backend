@@ -1,3 +1,4 @@
+from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
 from datetime import date, timedelta
@@ -266,13 +267,9 @@ def run_due_recurring_transactions(db: Session, user_id: int):
         if item.frequency == "weekly":
             item.next_run_date += timedelta(weeks=1)
         elif item.frequency == "monthly":
-            item.next_run_date = item.next_run_date.replace(
-                month=item.next_run_date.month % 12 + 1
-            )
+            item.next_run_date = relativedelta(months=1)
         elif item.frequency == "yearly":
-            item.next_run_date = item.next_run_date.replace(
-                year=item.next_run_date.year + 1
-            )
+            item.next_run_date = relativedelta(years=1)
 
     db.commit()
     return generated
@@ -297,9 +294,10 @@ def get_savings_goals(db: Session, user_id: int):
         SavingsGoal.user_id == user_id
     ).all()
 
-def update_savings_goal(db: Session, goal_id: int, data: schemas.SavingsGoalUpdate):
+def update_savings_goal(db: Session, goal_id: int, data: schemas.SavingsGoalUpdate, user_id: int):
     goal = db.query(SavingsGoal).filter(
-        SavingsGoal.id == goal_id
+        SavingsGoal.id == goal_id,
+        SavingsGoal.user_id == user_id
     ).first()
 
     if not goal:
@@ -318,21 +316,23 @@ def update_savings_goal(db: Session, goal_id: int, data: schemas.SavingsGoalUpda
     db.refresh(goal)
     return goal
 
-def delete_savings_goal(db: Session, goal_id: int):
+def delete_savings_goal(db: Session, goal_id: int, user_id: int):
     goal = db.query(SavingsGoal).filter(
-        SavingsGoal.id == goal_id
+        SavingsGoal.id == goal_id,
+        SavingsGoal.user_id == user_id
     ).first()
 
     if not goal:
-        return None
+        return False
 
     db.delete(goal)
     db.commit()
     return True
 
-def contribute_to_goal(db: Session, goal_id: int, amount: float):
+def contribute_to_goal(db: Session, goal_id: int, amount: float, user_id: int):
     goal = db.query(SavingsGoal).filter(
-        SavingsGoal.id == goal_id
+        SavingsGoal.id == goal_id,
+        SavingsGoal.user_id == user_id
     ).first()
 
     if not goal:
@@ -342,6 +342,41 @@ def contribute_to_goal(db: Session, goal_id: int, amount: float):
     db.commit()
     db.refresh(goal)
     return goal
+
+def update_recurring_transaction(db: Session, recurring_id: int, updated_data, user_id: int):
+    recurring = db.query(RecurringTransaction).filter(
+        RecurringTransaction.id == recurring_id,
+        RecurringTransaction.user_id == user_id
+    ).first()
+
+    if not recurring:
+        return None
+
+    recurring.amount = updated_data.amount
+    recurring.description = updated_data.description
+    recurring.category_id = updated_data.category_id
+    recurring.type = updated_data.type
+    recurring.frequency = updated_data.frequency
+    recurring.next_run_date = updated_data.next_run_date
+    recurring.active = updated_data.active
+
+    db.commit()
+    db.refresh(recurring)
+    return recurring
+
+
+def delete_recurring_transaction(db: Session, recurring_id: int, user_id: int):
+    recurring = db.query(RecurringTransaction).filter(
+        RecurringTransaction.id == recurring_id,
+        RecurringTransaction.user_id == user_id 
+    ).first()
+
+    if not recurring:
+        return False
+
+    db.delete(recurring)
+    db.commit()
+    return True
 
 # Yearly Summary CRUD
 

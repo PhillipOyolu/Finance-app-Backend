@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.core_auth import get_current_user
@@ -25,14 +25,20 @@ def update_goal(goal_id: int,
                 data: schemas.SavingsGoalUpdate,
                 db: Session = Depends(get_db),
                 user=Depends(get_current_user)):
-    return crud.update_savings_goal(db, goal_id, data)
+    updated = crud.update_savings_goal(db, goal_id, data, user.id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return updated
 
 
 @router.delete("/{goal_id}")
 def delete_goal(goal_id: int,
                 db: Session = Depends(get_db),
                 user=Depends(get_current_user)):
-    return crud.delete_savings_goal(db, goal_id)
+    deleted = crud.delete_savings_goal(db, goal_id, user.id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return {"message": "Goal successfuly deleted"}
 
 
 @router.post("/{goal_id}/contribute", response_model=schemas.SavingsGoal)
@@ -40,4 +46,7 @@ def contribute(goal_id: int,
                amount: float,
                db: Session = Depends(get_db),
                user=Depends(get_current_user)):
-    return crud.contribute_to_goal(db, goal_id, amount)
+    contributed = crud.contribute_to_goal(db, goal_id, amount,user.id)
+    if not contributed:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return contributed

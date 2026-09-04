@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, ForeignKey
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -13,7 +13,7 @@ class Expense(Base):
     amount = Column(Float, nullable=False)
     description = Column(String, nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="expenses")
@@ -27,7 +27,7 @@ class Income(Base):
     amount = Column(Float, nullable=False)
     description = Column(String, nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="incomes")
@@ -60,7 +60,7 @@ class Budget(Base):
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User")
     category = relationship("Category")
@@ -96,7 +96,7 @@ class RecurringTransaction(Base):
     next_run_date = Column(Date, nullable=False)
     active = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User")
     category = relationship("Category")
@@ -114,6 +114,6 @@ class SavingsGoal(Base):
     current_amount = Column(Float, default=0.0)
     deadline = Column(Date, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User")
