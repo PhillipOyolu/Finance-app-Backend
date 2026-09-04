@@ -7,18 +7,19 @@ Built with **FastAPI**, **SQLAlchemy**, and **JWT authentication**, this backend
 
 ## 🚀 Features
 
-### 🔐 Authentication
-- User registration & login  
+### 🔐 Authentication & Security
+- User registration & OAuth2 password bearer login  
 - JWT-based authentication  
-- Secure password hashing  
-- Full multi-user data isolation  
+- Direct `bcrypt` password hashing  
+- Scoped database queries providing full multi-user data isolation (IDOR protection)  
+- Strict environment-variable validation via `pydantic-settings`
 
 ### 💸 Transactions
 - Create, update, delete **expenses**  
 - Create, update, delete **incomes**  
 - Category assignment  
 - Filtering & querying  
-- Automatic timestamps  
+- Timezone-aware UTC timestamps  
 
 ### 🗂 Categories
 - Custom categories per user  
@@ -44,6 +45,7 @@ Built with **FastAPI**, **SQLAlchemy**, and **JWT authentication**, this backend
 
 ### 🔁 Recurring Transactions
 - Weekly, monthly, yearly recurring items  
+- Robust calendar rollover handling variable months and leap years via `python-dateutil`  
 - Auto-generation of real transactions  
 - Supports both incomes & expenses  
 - Pause/resume recurring items  
@@ -60,12 +62,13 @@ Built with **FastAPI**, **SQLAlchemy**, and **JWT authentication**, this backend
 
 ## 🧱 Tech Stack
 
-- **FastAPI** (Python)
+- **FastAPI** (Python 3.10+)
 - **SQLAlchemy ORM**
 - **SQLite** (dev) / PostgreSQL-ready
-- **Pydantic v2**
-- **JWT Authentication**
-- **Uvicorn**
+- **Pydantic v2** & **Pydantic-Settings**
+- **JWT Authentication** (`python-jose` / `pyjwt`) & **Bcrypt**
+- **Testing:** Pytest, HTTPX
+- **Server:** Uvicorn
 
 ---
 
@@ -74,7 +77,6 @@ Built with **FastAPI**, **SQLAlchemy**, and **JWT authentication**, this backend
 This project was developed using **uv**, a modern Python package and environment manager.
 
 While not required to run the backend, `uv` provides:
-
 - extremely fast dependency installation  
 - automatic virtual environment handling  
 - reproducible builds  
@@ -86,166 +88,152 @@ If you prefer, you can still install dependencies using standard `pip` commands 
 
 ## 📁 Project Structure
 
+```text
 app/
 │
 ├── core/
-│   ├── auth.py
-│   ├── database.py
-│   └── security.py
+│   ├── config.py          # Environment settings validation
+│   ├── core_auth.py       # Authentication dependencies & get_current_user
+│   ├── database.py        # Engine, SessionLocal, and declarative Base
+│   ├── jwt.py             # Token encoding/decoding utilities
+│   └── security.py        # Password hashing via bcrypt
 │
-├── models/
-│   ├── user.py
-│   ├── expense.py
-│   ├── income.py
-│   ├── category.py
-│   ├── budget.py
-│   ├── recurring_transaction.py
-│   └── savings_goal.py
-│
+├── models.py              # SQLAlchemy database tables & relationships
 ├── routes/
-│   ├── auth.py
+│   ├── routes_auth.py
 │   ├── expenses.py
 │   ├── incomes.py
 │   ├── categories.py
 │   ├── budgets.py
 │   ├── summary.py
-│   ├── transactions.py
 │   ├── recurring.py
 │   └── goals.py
 │
-├── crud.py
-├── schemas.py
-└── main.py
+├── crud.py                # Isolated, user-scoped database queries
+├── schemas.py             # Pydantic v2 request/response models (ConfigDict)
+└── main.py                # FastAPI app initialisation & router mounting
 
----
+tests/
+├── conftest.py            # Isolated in-memory SQLite fixtures & TestClient
+├── test_auth_and_expenses.py
+└── test_recurring.py
 
-## ▶️ Running the Project
+Installation & Setup
+1. Clone the repository
+Bash
+git clone [https://github.com/PhillipOyolu/Finance-app-Backend.git](https://github.com/PhillipOyolu/Finance-app-Backend.git)
+cd Finance-app-Backend
+2. Create a virtual environment
+Using standard Python:
 
+Bash
+python -m venv .venv
+source .venv/bin/activate   # macOS/Linux
+.venv\Scripts\activate      # Windows
+Or using uv:
+
+Bash
 uv venv
-uv sync
-uv run fastapi dev app/main.py
-
----
-
-## 🛠 Installation & Setup
-
-### 1. Clone the repository
-
-https://github.com/PhillipOyolu/Finance-app-Backend
-
-
-### 2. Create a virtual environment
-
-python -m venv venv
-source venv/bin/activate   # macOS/Linux
-venv\Scripts\activate      # Windows
-
-### 3. Install dependencies
-
+3. Install dependencies
+Bash
 pip install -r requirements.txt
+(Or with uv: uv sync)
 
-### 4. Run the server
+4. Configure Environment Variables
+Create a .env file in the root directory (refer to .env.example):
 
+Code snippet
+SECRET_KEY=your_super_secret_key_minimum_16_characters
+DATABASE_URL=sqlite:///./finance.db
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+5. Run the server
+Bash
 uvicorn app.main:app --reload
+Server runs at:
 
-Server runs at:  
-**http://127.0.0.1:8000**
+http://127.0.0.1:8000
 
-Interactive API docs:  
-**http://127.0.0.1:8000/docs**
+Interactive API documentation:
 
----
+Swagger UI: http://127.0.0.1:8000/docs
 
-## 📌 API Overview
+ReDoc: http://127.0.0.1:8000/redoc
 
-### Authentication
-- `POST /auth/register`
-- `POST /auth/login`
+🧪 Automated Testing
+The backend includes a comprehensive automated test suite testing registration, login, cross-user isolation (IDOR checks), and calendar-dependent recurring transaction algorithms. Tests run against an isolated in-memory SQLite database.
 
-### Expenses
-- `POST /expenses/`
-- `GET /expenses/`
-- `PUT /expenses/{id}`
-- `DELETE /expenses/{id}`
+Execute all tests with:
+Bash
+pytest
 
-### Incomes
-- `POST /incomes/`
-- `GET /incomes/`
-- `PUT /incomes/{id}`
-- `DELETE /incomes/{id}`
+📌 API Overview:
 
-### Categories
-- `POST /categories/`
-- `GET /categories/`
+Authentication:
+POST /auth/signup
+POST /auth/login
 
-### Budgets
-- `POST /budgets/overall`
-- `POST /budgets/category`
-- `GET /budgets/`
+Expenses:
+POST /expenses/
+GET /expenses/
+PUT /expenses/{id}
+DELETE /expenses/{id}
 
-### Summaries
-- `GET /summary/monthly?year=2024&month=5`
-- `GET /summary/yearly?year=2024`
+Incomes:
+POST /incomes/
+GET /incomes/
+PUT /incomes/{id}
+DELETE /incomes/{id}
 
-### Recurring Transactions
-- `POST /recurring/`
-- `GET /recurring/`
-- `PUT /recurring/{id}`
-- `DELETE /recurring/{id}`
-- `POST /recurring/run`
+Categories:
+POST /categories/
+GET /categories/
 
-### Savings Goals
-- `POST /goals/`
-- `GET /goals/`
-- `PUT /goals/{id}`
-- `DELETE /goals/{id}`
-- `POST /goals/{id}/contribute?amount=50`
+Budgets:
+POST /budgets/overall
+POST /budgets/category
+GET /budgets/
 
----
+Summaries:
+GET /summary/monthly?year=2024&month=5
+GET /summary/yearly?year=2024
 
-## 🏁 Project Status
+Recurring Transactions:
+POST /recurring/
+GET /recurring/
+PUT /recurring/{id}
+DELETE /recurring/{id}
+POST /recurring/run
 
-### **Backend: COMPLETE**  
-This repository represents the **final backend version** of the Finance App.
+Savings Goals:
+POST /goals/
+GET /goals/
+PUT /goals/{id}
+DELETE /goals/{id}
+POST /goals/{id}/contribute?amount=50
 
-All core features are implemented, tested, and ready for frontend integration.
+🏁 Project Status:
+Backend: COMPLETE
+This repository represents the final backend version of the Finance App.
 
-### **Next Phase: Frontend (React / Next.js)**  
-The next repository will include:
+All core features are implemented, hardened against IDOR, fully tested with pytest, and ready for frontend integration.
 
-- Dashboard UI  
-- Charts (income, expenses, trends)  
-- Budget progress bars  
-- Savings goal visualisation  
-- Recurring transaction management  
-- Authentication UI  
-- Mobile-friendly layout 
+Next Phase: Frontend (React / Next.js)
+The upcoming frontend repository will include:
 
----
+Dashboard UI
+Charts (income, expenses, trends)
+Budget progress bars
+Savings goal visualisation
+Recurring transaction management
+Authentication UI
+Mobile-friendly layout
 
-## 🧰 Development Tools
+🏷 GitHub Release Tag
+This backend version is officially tagged as: v1.0.1-backend-complete
 
-This project was developed using **uv**, a modern Python package and environment manager.
-
-While not required to run the backend, `uv` provides:
-
-- extremely fast dependency installation  
-- automatic virtual environment handling  
-- reproducible builds  
-- a cleaner workflow than pip + venv  
-
-If you prefer, you can still install dependencies using standard `pip` commands — the backend works either way.
-
----
-
-## 🏷 GitHub Release Tag
-
-This backend version is officially tagged as: v1.0.0-backend-complete
-
-
-## 📬 Contact
-
-**Phillip Oyolu**  
-Junior Developer  
+📬 Contact
+Phillip Oyolu
+Junior Developer
 GitHub: https://github.com/PhillipOyolu
 LinkedIn: https://www.linkedin.com/in/phillipoyolu/
