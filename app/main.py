@@ -11,6 +11,7 @@ from app.routes import routes_auth
 from app.routes import budgets
 from app.routes import recurring
 from app.routes import goals
+from app.routes import routes_dashboard
 
 # Database Initialization
 Base.metadata.create_all(bind=engine)
@@ -35,6 +36,7 @@ app.include_router(routes_auth.router)
 app.include_router(budgets.router)
 app.include_router(recurring.router)
 app.include_router(goals.router)
+app.include_router(routes_dashboard.router)
 
 # Root Endpoint
 @app.get("/")

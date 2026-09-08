@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 
 
@@ -114,3 +114,22 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+# Transaction Schemas
+class TransactionBase(BaseModel):
+    id: int
+    amount: float
+    description: Optional[str] = None
+    category: Optional[str] = "General"
+    type: str  # "income" or "expense"
+    date: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Dashboard Summary Schema
+class DashboardSummary(BaseModel):
+    total_balance: float
+    monthly_income: float
+    monthly_expenses: float
+    recent_transactions: List[TransactionBase]
