@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -11,7 +11,7 @@ router = APIRouter(
     tags=["Expenses"]
 )
 
-@router.post("/", response_model=schemas.Expense)
+@router.post("/", response_model=schemas.Expense, status_code=status.HTTP_201_CREATED)
 def create_expense(
     expense: schemas.ExpenseCreate,
     db: Session = Depends(get_db),
@@ -22,46 +22,47 @@ def create_expense(
 
 @router.get("/", response_model=List[schemas.Expense])
 def read_expenses(
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    return crud.get_expenses(db, current_user.id)
+    return crud.get_expenses(db, current_user.id, skip=skip, limit=limit)
+
+
+@router.get("/{expense_id}", response_model=schemas.Expense)
+def read_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    expense = crud.get_expense_by_id(db, expense_id=expense_id, user_id=current_user.id)
+    if not expense:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found")
+    return expense
 
 
 @router.put("/{expense_id}", response_model=schemas.Expense)
 def update_expense(
     expense_id: int,
-    expense: schemas.ExpenseCreate,
+    expense: schemas.ExpenseUpdate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    # Ensure the expense belongs to the user
-    existing = db.query(crud.Expense).filter(
-        crud.Expense.id == expense_id,
-        crud.Expense.user_id == current_user.id
-    ).first()
-
-    if not existing:
-        raise HTTPException(status_code=404, detail="Expense not found")
-
-    return crud.update_expense(db, expense_id, expense)
+    updated = crud.update_expense(db, expense_id=expense_id, expense_update=expense, user_id=current_user.id)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found")
+    return updated
 
 
-@router.delete("/{expense_id}")
+@router.delete("/{expense_id}", status_code=status.HTTP_200_OK)
 def delete_expense(
     expense_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    # Ensure the expense belongs to the user
-    existing = db.query(crud.Expense).filter(
-        crud.Expense.id == expense_id,
-        crud.Expense.user_id == current_user.id
-    ).first()
-
-    if not existing:
-        raise HTTPException(status_code=404, detail="Expense not found")
-
-    crud.delete_expense(db, expense_id)
+    deleted = crud.delete_expense(db, expense_id=expense_id, user_id=current_user.id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found")
     return {"message": "Expense deleted successfully"}
 

@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
+from typing import Dict, Any
 
 from app.core.database import get_db
 from app.core.core_auth import get_current_user
-from app import crud
+from app.models import Expense, Income, Category, Budget
 
 router = APIRouter(
     prefix="/summary",
@@ -16,60 +18,72 @@ def get_monthly_summary(
     month: int,
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
-):
-    incomes = crud.get_incomes_by_month(db, year, month, current_user.id)
-    expenses = crud.get_expenses_by_month(db, year, month, current_user.id)
+) -> Dict[str, Any]:
+    if not (1 <= month <= 12):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Month must be between 1 and 12")
 
-    if not incomes and not expenses:
-        return {"message": "No data found for this month"}
+    # Portable date bounds
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+
+    incomes = db.query(Income).filter(
+        Income.user_id == current_user.id,
+        Income.created_at >= start_date,
+        Income.created_at < end_date
+    ).all()
+
+    expenses = db.query(Expense).filter(
+        Expense.user_id == current_user.id,
+        Expense.created_at >= start_date,
+        Expense.created_at < end_date
+    ).all()
 
     total_income = sum(i.amount for i in incomes)
     total_expenses = sum(e.amount for e in expenses)
-    net = total_income - total_expenses
+    net = round(total_income - total_expenses, 2)
 
-    category_map = crud.get_category_map(db)
+    categories = {c.id: c.name for c in db.query(Category).all()}
 
-    # Group income by category
     income_by_category = {}
     for i in incomes:
-        cat_name = category_map.get(i.category_id, "Uncategorised")
-        income_by_category[cat_name] = income_by_category.get(cat_name, 0) + i.amount
+        cat_name = categories.get(i.category_id, "Uncategorized")
+        income_by_category[cat_name] = round(income_by_category.get(cat_name, 0.0) + i.amount, 2)
 
-    # Group expenses by category
     expense_by_category = {}
     for e in expenses:
-        cat_name = category_map.get(e.category_id, "Uncategorised")
-        expense_by_category[cat_name] = expense_by_category.get(cat_name, 0) + e.amount
+        cat_name = categories.get(e.category_id, "Uncategorized")
+        expense_by_category[cat_name] = round(expense_by_category.get(cat_name, 0.0) + e.amount, 2)
 
-    # Percentages
     income_percentages = {
-        cat: round((amount / total_income) * 100, 2)
-        for cat, amount in income_by_category.items()
+        cat: round((amt / total_income) * 100, 2)
+        for cat, amt in income_by_category.items()
     } if total_income > 0 else {}
 
     expense_percentages = {
-        cat: round((amount / total_expenses) * 100, 2)
-        for cat, amount in expense_by_category.items()
+        cat: round((amt / total_expenses) * 100, 2)
+        for cat, amt in expense_by_category.items()
     } if total_expenses > 0 else {}
 
-    # Budgets
-    budgets = crud.get_budgets(db, current_user.id, month, year)
+    # Budgets for this month
+    budgets = db.query(Budget).filter(
+        Budget.user_id == current_user.id,
+        Budget.month == month,
+        Budget.year == year
+    ).all()
 
     budget_summary = []
-
     for b in budgets:
-        if b.category_id:
-            category_name = category_map.get(b.category_id, "Uncategorised")
-            spent = expense_by_category.get(category_name, 0)
-        else:
-            spent = total_expenses
-
-        remaining = b.amount - spent
-        percent_used = round((spent / b.amount) * 100, 2) if b.amount > 0 else 0
+        cat_name = categories.get(b.category_id, "Overall")
+        spent = expense_by_category.get(cat_name, total_expenses if b.category_id is None else 0.0)
+        remaining = round(b.amount - spent, 2)
+        percent_used = round((spent / b.amount) * 100, 2) if b.amount > 0 else 0.0
 
         budget_summary.append({
             "budget_id": b.id,
-            "category": category_map.get(b.category_id, "Overall"),
+            "category": cat_name,
             "limit": b.amount,
             "spent": spent,
             "remaining": remaining,
@@ -77,22 +91,12 @@ def get_monthly_summary(
         })
 
     return {
-        "total_income": total_income,
-        "total_expenses": total_expenses,
+        "total_income": round(total_income, 2),
+        "total_expenses": round(total_expenses, 2),
         "net": net,
         "income_by_category": income_by_category,
         "expense_by_category": expense_by_category,
         "income_percentages": income_percentages,
         "expense_percentages": expense_percentages,
-        "income_entries": incomes,
-        "expense_entries": expenses,
         "budgets": budget_summary
     }
-
-# Yearly Summary
-
-@router.get("/yearly")
-def yearly_summary(year: int,
-                   db: Session = Depends(get_db),
-                   user=Depends(get_current_user)):
-    return crud.get_yearly_summary(db, user.id, year)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -11,7 +11,7 @@ router = APIRouter(
     tags=["Incomes"]
 )
 
-@router.post("/", response_model=schemas.Income)
+@router.post("/", response_model=schemas.Income, status_code=status.HTTP_201_CREATED)
 def create_income(
     income: schemas.IncomeCreate,
     db: Session = Depends(get_db),
@@ -22,44 +22,47 @@ def create_income(
 
 @router.get("/", response_model=List[schemas.Income])
 def read_incomes(
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    return crud.get_incomes(db, current_user.id)
+    return crud.get_incomes(db, current_user.id, skip=skip, limit=limit)
+
+
+@router.get("/{income_id}", response_model=schemas.Income)
+def read_income(
+    income_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    income = crud.get_income_by_id(db, income_id=income_id, user_id=current_user.id)
+    if not income:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Income not found")
+    return income
 
 
 @router.put("/{income_id}", response_model=schemas.Income)
 def update_income(
     income_id: int,
-    income: schemas.IncomeCreate,
+    income: schemas.IncomeUpdate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    existing = db.query(crud.Income).filter(
-        crud.Income.id == income_id,
-        crud.Income.user_id == current_user.id
-    ).first()
-
-    if not existing:
-        raise HTTPException(status_code=404, detail="Income not found")
-
-    return crud.update_income(db, income_id, income)
+    updated = crud.update_income(db, income_id=income_id, income_update=income, user_id=current_user.id)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Income not found")
+    return updated
 
 
-@router.delete("/{income_id}")
+@router.delete("/{income_id}", status_code=status.HTTP_200_OK)
 def delete_income(
     income_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    existing = db.query(crud.Income).filter(
-        crud.Income.id == income_id,
-        crud.Income.user_id == current_user.id
-    ).first()
-
-    if not existing:
-        raise HTTPException(status_code=404, detail="Income not found")
-
-    crud.delete_income(db, income_id)
+    deleted = crud.delete_income(db, income_id=income_id, user_id=current_user.id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Income not found")
     return {"message": "Income deleted successfully"}
 

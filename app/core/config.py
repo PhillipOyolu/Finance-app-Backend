@@ -1,13 +1,11 @@
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-class ConfigurationError(Exception):
-    """Raised when critical configuration fails validation."""
-    pass
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Finance_API"
     DATABASE_URL: str = "sqlite:///./finance.db"
-    SECRET_KEY: str 
+    SECRET_KEY: str = Field(..., description="Cryptographic signing key for JWT tokens")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
@@ -17,12 +15,15 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    def validate_security(self):
-        if self.SECRET_KEY == "your-secret-key" or len(self.SECRET_KEY) < 16:
-            raise ConfigurationError(
-                "SECRET_KEY must be set in .env with a secure key (at least 16 characters)."
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        # Enforce minimum 32 characters (256-bit entropy) for production HMAC security
+        if v == "your-secret-key" or len(v.strip()) < 32:
+            raise ValueError(
+                "SECRET_KEY must be configured in .env and contain at least 32 characters for secure token signing."
             )
+        return v.strip()
+
 
 settings = Settings()
-#Run validation on startup
-settings.validate_security()

@@ -1,37 +1,43 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
-# Database & Model imports
 from app.models import User
 from app.core.database import get_db
 from app import schemas, crud
-
 from app.core.security import verify_password, create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/signup", status_code=status.HTTP_201_CREATED)
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+@router.post("/signup", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    clean_email = user.email.strip().lower()
+    clean_username = user.username.strip()
+
     existing_user = db.query(User).filter(
-        (User.email == user.email) | (User.username == user.username)
+        (User.email == clean_email) | (User.username == clean_username)
     ).first()
     
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="A user with this username or email already exists."
         )
         
     return crud.create_user(db, user)
 
 
-@router.post("/login")
+@router.post("/login", response_model=TokenResponse)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # Authenticate via either username OR email
+    identifier = form_data.username.strip()
+    
     user = db.query(User).filter(
-        (User.username == form_data.username) | 
-        (User.email == form_data.username)
+        (User.username == identifier) | (User.email == identifier.lower())
     ).first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
